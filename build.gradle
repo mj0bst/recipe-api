@@ -1,0 +1,106 @@
+plugins {
+	id 'org.springframework.boot' version '2.7.2'
+	id 'io.spring.dependency-management' version '1.0.12.RELEASE'
+	id 'java'
+	id "org.openapi.generator" version "6.0.1" // generate code from the API spec
+	id "com.diffplug.eclipse.apt" version "3.37.1" // needed for mapstruct (https://mapstruct.org/documentation/stable/reference/html/#_gradle)
+	id 'com.google.cloud.tools.jib' version '3.2.1' // create a docker image
+}
+
+group = 'de.jobst'
+version = '1.0.0'
+sourceCompatibility = '17'
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('springCloudVersion', "2021.0.3")
+	set('mapstructVersion', "1.5.2.Final")
+}
+
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.liquibase:liquibase-core'
+	implementation 'org.springframework.cloud:spring-cloud-starter-sleuth'
+	implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+	implementation 'org.openapitools:jackson-databind-nullable:0.2.3'
+	implementation 'org.zalando:logbook-spring-boot-starter:2.14.0'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'com.h2database:h2'
+    testAnnotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+test {
+	useJUnitPlatform()
+}
+
+compileJava.dependsOn tasks.openApiGenerate
+compileJava.dependsOn tasks.eclipse
+
+def generatedSourcesDir = "$buildDir/generated/openapi"
+
+openApiGenerate {
+    inputSpec = "$rootDir/src/main/resources/recipe-api-1.0.0.yaml".toString()
+    generatorName = 'spring'
+    outputDir = generatedSourcesDir.toString()
+    modelPackage = 'de.jobst.recipe.model.generated'
+    importMappings = [
+        'Pageable': 'org.springframework.data.domain.Pageable'
+    ]
+    globalProperties = [
+        apis: "false",
+        models: "",
+    ]
+    configOptions = [
+    	annotationLibrary: "none",
+    	documentationProvider: "none"
+    ]
+}
+
+sourceSets {
+    getByName("main") {
+        java {
+            srcDir("$generatedSourcesDir/src/main/java")
+        }
+    }
+}
+
+jib {
+  from {
+    image = 'azul/zulu-openjdk:17.0.2-jre'
+  }
+  to {
+    image = 'recipe'
+    tags = ['1.0.0', 'latest']
+  }
+  container {
+    jvmFlags = ['-Dspring.profiles.active=docker', ]
+    mainClass = 'de.jobst.recipe.RecipeApiApplication'
+    args = []
+    ports = ['8080', '8081']
+    format = 'OCI'
+  }
+}

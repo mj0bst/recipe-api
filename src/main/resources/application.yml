@@ -1,0 +1,35 @@
+server.port: 8080
+management:
+  server.port: 8081
+  endpoints.web.exposure.include: "*"
+
+spring:
+  # placeholder, will not run in final jar
+  datasource:
+    url: jdbc:h2:~/liquibase;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+  jpa:
+    # set to true for SQL statement output
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        # set to true for SQL statement output
+        show_sql: false
+        generate_statistics: false
+        # set to true for formatting when SQL statement output is active
+        format_sql: false
+      
+  liquibase.change-log: classpath:db/changelog/db.changelog-master.yaml
+  
+logging:
+  level:
+    org:
+      hibernate:
+        # set to debug for SQL statement output
+        SQL: INFO
+        # set to TRACE for binding information
+        type.descriptor.sql.BasicBinder: INFO
+      zalando.logbook: TRACE

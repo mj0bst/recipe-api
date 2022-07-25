@@ -1,0 +1,250 @@
+openapi: 3.0.1
+info:
+  title: Recipe API
+  description: 'This is a recipe API providing CRUD as well as filtering functionality.'
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+paths:
+  /recipe:
+    post:
+      tags:
+      - recipe
+      summary: Add a new recipe
+      operationId: addRecipe
+      requestBody:
+        description: Recipe object that needs to be added
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recipe'
+        required: true
+      responses:
+        400:
+          description: Invalid input
+          content: {}
+    get:
+      tags:
+      - recipe
+      summary: Get recipes with optional filtering
+      operationId: getRecipes
+      parameters:
+      - name: pageable
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/Pageable'
+      - name: vegetarian
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: servings
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+      - name: text
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Text search within the instructions
+      - name: ingredientsIncluded
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      - name: ingredientsExcluded
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipeFilterResponse"
+        400:
+          description: Invalid parameters supplied
+          content: {}
+  /recipe/{recipeId}:
+    get:
+      tags:
+      - recipe
+      summary: Find recipe by ID
+      description: Returns a single recipe
+      operationId: getRecipeById
+      parameters:
+      - name: recipeId
+        in: path
+        description: ID of recipe to return
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        200:
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recipe'
+        400:
+          description: Invalid ID supplied
+          content: {}
+        404:
+          description: Recipe not found
+          content: {}
+    put:
+      tags:
+      - recipe
+      summary: Update an existing recipe by ID
+      operationId: updateRecipe
+      parameters:
+      - name: recipeId
+        in: path
+        description: ID of recipe to return
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        description: Recipe object that needs to be added
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recipe'
+        required: true
+      responses:
+        400:
+          description: Invalid request data
+          content: {}
+        404:
+          description: Recipe not found
+          content: {}
+    delete:
+      tags:
+      - recipe
+      summary: Deletes a recipe
+      operationId: deleteRecipe
+      parameters:
+      - name: recipeId
+        in: path
+        description: Recipe ID to delete
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        400:
+          description: Invalid ID supplied
+          content: {}
+        404:
+          description: Recipe not found
+          content: {}
+
+components:
+  schemas:
+    Recipe: 
+      type: object
+      description: A recipe, base object of the API
+      properties: 
+        id: 
+          type: string
+          format: uuid
+          readOnly: true
+          example: ebf471b2-77c1-4f38-aa73-a40b4b718c35
+        title: 
+          type: string
+          example: The super duper recipe
+        servings: 
+          type: integer
+          minimum: 1
+          example: 2
+        vegetarian: 
+          type: boolean
+        instructions: 
+          type: string
+          example: Throw everything into a big pot and pray for a miracle.
+        ingredients: 
+          type: array
+          items:
+            $ref: "#/components/schemas/Ingredient"
+      required:
+      - id
+      - title
+      - servings
+      - vegetarian
+      - instructions
+      - ingredients
+    Ingredient:
+      type: object
+      description: An ingredient to a recipe
+      properties: 
+        name: 
+          type: string
+          example: salt
+        unit: 
+          type: string
+          example: tsp
+        number: 
+          type: number
+          format: double
+          minimum: 0
+          example: 2
+      required:
+      - name
+      - number
+    RecipeFilterResponse:
+      type: object
+      description: Response for a GET /recipe request including pagination metadata
+      properties:
+        content:
+          type: array
+          items: 
+            $ref: "#/components/schemas/Recipe"
+        pageMetadata:
+          $ref: "#/components/schemas/PageMetadata"
+    PageMetadata:
+      description: Description of page with multiple objects
+      properties:
+        size: 
+          type: integer
+          description: The size of the current page
+          example: 20
+        totalElements: 
+          type: integer
+          format: int64
+          description: The total amount of elements
+          example: 30
+        totalPages: 
+          type: integer
+          description: The total amount of pages
+          example: 2
+        number: 
+          type: integer
+          description: The current page
+          example: 0
+    Pageable: 
+      description: Pageable query parameters
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 0
+          default: 0
+          description: The page to be queried
+        size:
+          type: integer
+          minimum: 1
+          default: 10
+          description: The requested page size
